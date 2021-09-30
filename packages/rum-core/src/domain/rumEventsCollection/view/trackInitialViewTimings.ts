@@ -6,6 +6,7 @@ import {
   EventEmitter,
   RelativeTime,
   ONE_MINUTE,
+  addMonitoringMessage,
 } from '@datadog/browser-core'
 import { LifeCycle, LifeCycleEventType } from '../../lifeCycle'
 import { trackFirstHidden } from './trackFirstHidden'
@@ -114,16 +115,35 @@ export function trackLargestContentfulPaintTiming(
     { capture: true, once: true }
   )
 
+  let hadLCP = false
+
   const { unsubscribe: unsubscribeLifeCycle } = lifeCycle.subscribe(
     LifeCycleEventType.PERFORMANCE_ENTRY_COLLECTED,
     (entry) => {
-      if (
-        entry.entryType === 'largest-contentful-paint' &&
-        entry.startTime < firstInteractionTimestamp &&
-        entry.startTime < firstHidden.timeStamp &&
-        entry.startTime < TIMING_MAXIMUM_DELAY
-      ) {
-        callback(entry.startTime)
+      if (entry.entryType === 'largest-contentful-paint') {
+        if (
+          entry.startTime < firstInteractionTimestamp &&
+          entry.startTime < firstHidden.timeStamp &&
+          entry.startTime < TIMING_MAXIMUM_DELAY
+        ) {
+          hadLCP = true
+          callback(entry.startTime)
+        } else if (!hadLCP) {
+          const reason =
+            entry.startTime >= firstInteractionTimestamp
+              ? 'after interaction'
+              : entry.startTime >= firstHidden.timeStamp
+              ? 'after hidden'
+              : entry.startTime >= TIMING_MAXIMUM_DELAY
+              ? 'after maximum delay'
+              : 'N/A'
+
+          addMonitoringMessage(`LCP dropped ${reason}`, {
+            startTime: entry.startTime,
+            firstInteractionTimestamp,
+            firstHiddenTimestamp: firstHidden.timeStamp,
+          })
+        }
       }
     }
   )

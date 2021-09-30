@@ -85,8 +85,8 @@ export function startSessionManagement<TrackingType extends string>(
           _dd_s: getCookie(SESSION_COOKIE_NAME),
         },
       })
+      inMemorySession = { ...session }
     }
-    inMemorySession = { ...session }
   }
 
   expandOrRenewSession()

@@ -143,6 +143,7 @@ export function trackLargestContentfulPaintTiming(
             firstInteractionTimestamp,
             firstHiddenTimestamp: firstHidden.timeStamp,
           })
+          hadLCP = true
         }
       }
     }

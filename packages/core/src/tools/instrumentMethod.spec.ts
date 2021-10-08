@@ -1,96 +1,106 @@
 import { instrumentMethod } from './instrumentMethod'
 
 describe('instrumentMethod', () => {
-  it('replaces a method', () => {
+  it('replaces the original method', () => {
     const original = () => 1
-    const source = { foo: original }
+    const object = { method: original }
 
-    instrumentMethod(source, 'foo', () => () => 2)
+    instrumentMethod(object, 'method', () => () => 2)
 
-    expect(source.foo).not.toBe(original)
-    expect(source.foo()).toBe(2)
+    expect(object.method).not.toBe(original)
+    expect(object.method()).toBe(2)
   })
 
-  it('sets a method with originally undefined', () => {
-    const source: { foo?: () => number } = {}
+  it('sets a method originally undefined', () => {
+    const object: { method?: () => number } = {}
 
-    instrumentMethod(source, 'foo', () => () => 2)
+    instrumentMethod(object, 'method', () => () => 2)
 
-    expect(source.foo!()).toBe(2)
+    expect(object.method!()).toBe(2)
   })
 
-  it('provides the original method to the replacement factory', () => {
+  it('provides the original method to the instrumentation factory', () => {
     const original = () => 1
-    const source = { foo: original }
-    const replacementFactorySpy = jasmine.createSpy().and.callFake((original: () => number) => () => original() + 2)
+    const object = { method: original }
+    const instrumentationFactorySpy = jasmine.createSpy().and.callFake((original: () => number) => () => original() + 2)
 
-    instrumentMethod(source, 'foo', replacementFactorySpy)
+    instrumentMethod(object, 'method', instrumentationFactorySpy)
 
-    expect(replacementFactorySpy).toHaveBeenCalledOnceWith(original)
-    expect(source.foo()).toBe(3)
+    expect(instrumentationFactorySpy).toHaveBeenCalledOnceWith(original)
+    expect(object.method()).toBe(3)
   })
 
-  it('calls the replacement with method arguments', () => {
-    const source = { foo: (a: number, b: number) => a + b }
-    const replacementSpy = jasmine.createSpy()
-    instrumentMethod(source, 'foo', () => replacementSpy)
+  it('calls the instrumentation with method arguments', () => {
+    const object = { method: (a: number, b: number) => a + b }
+    const instrumentationSpy = jasmine.createSpy()
+    instrumentMethod(object, 'method', () => instrumentationSpy)
 
-    source.foo(2, 3)
+    object.method(2, 3)
 
-    expect(replacementSpy).toHaveBeenCalledOnceWith(2, 3)
+    expect(instrumentationSpy).toHaveBeenCalledOnceWith(2, 3)
   })
 
-  it('allows other overrides from third parties', () => {
-    const source = { foo: () => 1 }
-    const replacementSpy = jasmine.createSpy().and.returnValue(2)
-    instrumentMethod(source, 'foo', () => replacementSpy)
+  it('allows other instrumentations from third parties', () => {
+    const object = { method: () => 1 }
+    const instrumentationSpy = jasmine.createSpy().and.returnValue(2)
+    instrumentMethod(object, 'method', () => instrumentationSpy)
 
-    thirdPartyOverride(source)
+    thirdPartyInstrumentation(object)
 
-    expect(source.foo()).toBe(4)
-    expect(replacementSpy).toHaveBeenCalled()
+    expect(object.method()).toBe(4)
+    expect(instrumentationSpy).toHaveBeenCalled()
   })
 
   describe('stop()', () => {
-    it('restores the original method', () => {
-      const original = () => 1
-      const source = { foo: original }
-      const { stop } = instrumentMethod(source, 'foo', () => () => 2)
+    it('restores the original behavior', () => {
+      const object = { method: () => 1 }
+      const { stop } = instrumentMethod(object, 'method', () => () => 2)
 
       stop()
 
-      expect(source.foo).toBe(original)
+      expect(object.method()).toBe(1)
     })
 
-    describe('when the method has been overridden by a third party', () => {
-      it('does not replace the method', () => {
-        const source = { foo: () => 1 }
-        const { stop } = instrumentMethod(source, 'foo', () => () => 2)
+    it('does not call the instrumentation anymore', () => {
+      const object = { method: () => 1 }
+      const instrumentationSpy = jasmine.createSpy()
+      const { stop } = instrumentMethod(object, 'method', () => instrumentationSpy)
 
-        thirdPartyOverride(source)
-        const overriddenFoo = source.foo
+      stop()
+
+      object.method()
+      expect(instrumentationSpy).not.toHaveBeenCalled()
+    })
+
+    describe('when the method has been instrumented by a third party', () => {
+      it('should not break the third party instrumentation', () => {
+        const object = { method: () => 1 }
+        const { stop } = instrumentMethod(object, 'method', () => () => 2)
+
+        thirdPartyInstrumentation(object)
+        const instrumentedMethod = object.method
 
         stop()
 
-        expect(source.foo).toBe(overriddenFoo)
+        expect(object.method).toBe(instrumentedMethod)
       })
 
-      it('does not call the replacement ', () => {
-        const source = { foo: () => 1 }
-        const replacementSpy = jasmine.createSpy()
-        const { stop } = instrumentMethod(source, 'foo', () => replacementSpy)
+      it('does not call the instrumentation', () => {
+        const object = { method: () => 1 }
+        const instrumentationSpy = jasmine.createSpy()
+        const { stop } = instrumentMethod(object, 'method', () => instrumentationSpy)
 
-        thirdPartyOverride(source)
+        thirdPartyInstrumentation(object)
 
         stop()
 
-        expect(replacementSpy).not.toHaveBeenCalled()
+        expect(instrumentationSpy).not.toHaveBeenCalled()
       })
     })
   })
 
-  function thirdPartyOverride(source: { foo: () => number }) {
-    const originalFoo = source.foo
-    source.foo = () => originalFoo() + 2
+  function thirdPartyInstrumentation(object: { method: () => number }) {
+    const originalMethod = object.method
+    object.method = () => originalMethod() + 2
   }
 })

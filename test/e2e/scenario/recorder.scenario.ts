@@ -663,12 +663,12 @@ describe('recorder', () => {
       .withSetup(bundleSetup)
       .withBody(html``)
       .run(async ({ events }) => {
-        const { initialInnerWidth, initialInnerHeight, initialVisualViewportScale } = (await browserExecute(() => {
+        const { initialInnerWidth, initialInnerHeight, initialVisualViewportDebug } = (await browserExecute(() => {
           const visual = window.visualViewport || {}
           return {
             initialInnerWidth: window.innerWidth,
             initialInnerHeight: window.innerHeight,
-            initialVisualViewportScale: {
+            initialVisualViewportDebug: {
               scale: visual.scale,
               width: visual.width,
               height: visual.height,
@@ -682,16 +682,23 @@ describe('recorder', () => {
         console.log({
           initialInnerWidth,
           initialInnerHeight,
-          initialVisualViewportScale,
+          initialVisualViewportDebug,
         })
 
-        if (!initialVisualViewportScale?.scale) {
+        if (!initialVisualViewportDebug?.scale) {
           console.log('Visual Viewport scale not supported')
           expect(true).toBeTruthy() // TODO: Ignore test properly
           return
         }
 
-        await pinchZoom(-125)
+        if (!driver?.performActions) {
+          // Synthetic Gestures not supported
+          console.log('Synthetic Gestures not supported')
+          expect(true).toBeTruthy() // TODO: Ignore test properly
+          return
+        }
+
+        await pinchZoom(99) // Negative Value scales out?
 
         await flushEvents()
 
@@ -703,7 +710,7 @@ describe('recorder', () => {
           return {
             nextInnerWidth: window.innerWidth,
             nextInnerHeight: window.innerHeight,
-            nextVisualViewportScale: {
+            nextVisualViewportDebug: {
               scale: visual.scale,
               width: visual.width,
               height: visual.height,
@@ -741,9 +748,9 @@ function initRumAndStartRecording(initConfiguration: RumInitConfiguration) {
 }
 
 async function pinchZoom(xChange = 50, durationMS = 500) {
-  const xBase = 100
-  const yBase = 200
-  const xOffsetFingerTwo = 50
+  const xBase = 160
+  const yBase = 160
+  const xOffsetFingerTwo = 40
 
   await driver.performActions([
     {

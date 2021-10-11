@@ -699,6 +699,7 @@ describe('recorder', () => {
         }
 
         await pinchZoom(99) // Negative Value scales out?
+        await pinchZoom(99)
 
         await flushEvents()
 
@@ -748,9 +749,9 @@ function initRumAndStartRecording(initConfiguration: RumInitConfiguration) {
 }
 
 async function pinchZoom(xChange = 50, durationMS = 500) {
-  const xBase = 160
-  const yBase = 160
-  const xOffsetFingerTwo = 40
+  const xBase = 150
+  const yBase = 150
+  const xOffsetFingerTwo = 25
 
   await driver.performActions([
     {

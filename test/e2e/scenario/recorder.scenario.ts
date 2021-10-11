@@ -663,39 +663,62 @@ describe('recorder', () => {
       .withSetup(bundleSetup)
       .withBody(html``)
       .run(async ({ events }) => {
-        const { initialInnerWidth, initialInnerHeight, visualViewportScale } = (await browserExecute(() => ({
-          initialInnerWidth: window.innerWidth,
-          initialInnerHeight: window.innerHeight,
-          visualViewportScale: (window.visualViewport || {}).scale,
-        }))) as any
+        const { initialInnerWidth, initialInnerHeight, initialVisualViewportScale } = (await browserExecute(() => {
+          const visual = window.visualViewport || {}
+          return {
+            initialInnerWidth: window.innerWidth,
+            initialInnerHeight: window.innerHeight,
+            initialVisualViewportScale: {
+              scale: visual.scale,
+              width: visual.width,
+              height: visual.height,
+              offsetLeft: visual.offsetLeft,
+              offsetTop: visual.offsetTop,
+              pageLeft: visual.pageLeft,
+              pageTop: visual.pageTop,
+            },
+          }
+        })) as any
         console.log({
           initialInnerWidth,
           initialInnerHeight,
-          visualViewportScale,
+          initialVisualViewportScale,
         })
 
-        if (!visualViewportScale) {
+        if (!initialVisualViewportScale?.scale) {
+          console.log('Visual Viewport scale not supported')
           expect(true).toBeTruthy() // TODO: Ignore test properly
           return
         }
 
-        await pinchZoom()
+        await pinchZoom(-125)
 
         await flushEvents()
 
         const segment = getFirstSegment(events)
         const visualViewportRecords = findAllVisualViewport(segment)
 
-        const visualViewportStatus = (await browserExecute(() => ({
-          initialInnerWidth: window.innerWidth,
-          initialInnerHeight: window.innerHeight,
-          visualViewportScale: (window.visualViewport || {}).scale,
-        }))) as any
+        const nextVisualViewportStatus = (await browserExecute(() => {
+          const visual = window.visualViewport || {}
+          return {
+            nextInnerWidth: window.innerWidth,
+            nextInnerHeight: window.innerHeight,
+            nextVisualViewportScale: {
+              scale: visual.scale,
+              width: visual.width,
+              height: visual.height,
+              offsetLeft: visual.offsetLeft,
+              offsetTop: visual.offsetTop,
+              pageLeft: visual.pageLeft,
+              pageTop: visual.pageTop,
+            },
+          }
+        })) as any
 
         console.log(
           'JSON visualViewportRecords:',
           JSON.stringify(visualViewportRecords, null, 2),
-          JSON.stringify(visualViewportStatus, null, 2)
+          JSON.stringify(nextVisualViewportStatus, null, 2)
         )
 
         expect(true).toBeTruthy() // Just pass everything and collect console logs
